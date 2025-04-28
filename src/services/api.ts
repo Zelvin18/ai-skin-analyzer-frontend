@@ -207,6 +207,9 @@ export const productAPI = {
   getProductById: (productId: number): Promise<AxiosResponse<Product>> => 
     api.get(`/products/${productId}/`),
     
+  addProduct: (productData: Partial<Product>): Promise<AxiosResponse<Product>> => 
+    api.post('/products/', productData),
+    
   updateProduct: (productId: number, data: Partial<Product>): Promise<AxiosResponse<Product>> => {
     // Create a copy of the data to avoid modifying the original
     const updateData = { ...data };
@@ -232,6 +235,9 @@ export const productAPI = {
       },
     });
   },
+  
+  deleteProduct: (productId: number): Promise<AxiosResponse<void>> => 
+    api.delete(`/products/${productId}/`),
 };
 
 // Consultation API
