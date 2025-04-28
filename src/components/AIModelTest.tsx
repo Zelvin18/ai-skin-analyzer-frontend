@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Box, Button, Text, VStack, useToast } from '@chakra-ui/react';
 import { testAIModel } from '../services/api';
-import { TestResult } from '../types';
+import { TestResult } from '../types/index';
 
 const AIModelTest = () => {
   const [isLoading, setIsLoading] = useState(false);

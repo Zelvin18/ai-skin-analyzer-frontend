@@ -62,7 +62,7 @@ import axios from 'axios';
 import './AdminDashboard.css';
 import ProductImage from '../components/ProductImage';
 import { productAPI } from '../services/api';
-import { User, Product } from '../types';
+import { Product, User } from '../types/index';
 
 interface FormData {
   id?: number;

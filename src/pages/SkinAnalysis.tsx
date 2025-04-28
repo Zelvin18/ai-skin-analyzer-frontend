@@ -38,7 +38,7 @@ import {
 import { FaCamera, FaUpload, FaCheck, FaLightbulb, FaExclamationTriangle, FaShoppingCart, FaArrowLeft } from 'react-icons/fa';
 import axios from 'axios';
 import './SkinAnalysis.css';
-import { SkinAnalysisResult } from '../types';
+import { SkinAnalysisResult } from '../types/index';
 
 const SkinAnalysis: React.FC = () => {
   const navigate = useNavigate();

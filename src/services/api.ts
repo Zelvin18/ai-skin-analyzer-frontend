@@ -8,7 +8,7 @@ import {
   ConsultationData, 
   TestResult,
   ApiResponse
-} from '../types';
+} from '../types/index';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 const AI_MODEL_URL = import.meta.env.VITE_AI_MODEL_URL || 'http://localhost:5000/predict';

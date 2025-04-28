@@ -27,7 +27,7 @@ import {
 } from '@chakra-ui/react';
 import { FaShoppingCart, FaArrowLeft, FaCheckCircle, FaExclamationTriangle, FaUserMd } from 'react-icons/fa';
 import './Results.css';
-import { Product, SkinAnalysisResult } from '../types';
+import { Product, SkinAnalysisResult } from '../types/index';
 
 const Results: React.FC = () => {
   const location = useLocation();

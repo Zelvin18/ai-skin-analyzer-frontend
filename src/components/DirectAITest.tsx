@@ -19,7 +19,7 @@ import {
   CardHeader,
   CardFooter,
 } from '@chakra-ui/react';
-import { SkinAnalysisResult } from '../types';
+import { SkinAnalysisResult } from '../types/index';
 
 const DirectAITest = () => {
   const [file, setFile] = useState<File | null>(null);
