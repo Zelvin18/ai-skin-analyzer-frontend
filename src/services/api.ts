@@ -13,8 +13,9 @@ import { createStandaloneToast } from '@chakra-ui/react';
 
 const { toast } = createStandaloneToast();
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
-const AI_MODEL_URL = import.meta.env.VITE_AI_MODEL_URL || 'http://localhost:5000/predict';
+// Temporarily hardcode the URLs for testing
+const API_BASE_URL = 'https://ai-skin-analyzer-backend.onrender.com/api';
+const AI_MODEL_URL = 'https://ai-skin-analyzer-backend.onrender.com/predict';
 
 // Debug logging
 console.log('API URLs:', {
