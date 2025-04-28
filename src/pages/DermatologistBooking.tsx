@@ -95,7 +95,7 @@ const DermatologistBooking: React.FC = () => {
   
   // Generate available dates (next 14 days)
   const generateAvailableDates = () => {
-    const dates = [];
+    const dates: string[] = [];
     const today = new Date();
     
     for (let i = 1; i <= 14; i++) {

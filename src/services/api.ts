@@ -216,7 +216,7 @@ export const productAPI = {
     const updateData = { ...data };
     
     // Remove image if it's not a File object
-    if (updateData.image && !(updateData.image instanceof File)) {
+    if (updateData.image && typeof updateData.image === 'string') {
       delete updateData.image;
     }
     
