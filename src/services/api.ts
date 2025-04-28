@@ -9,7 +9,7 @@ import {
   TestResult,
   ApiResponse
 } from '../types/index';
-import { toast } from '@chakra-ui/react';
+import { useToast } from '@chakra-ui/react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 const AI_MODEL_URL = import.meta.env.VITE_AI_MODEL_URL || 'http://localhost:5000/predict';
@@ -302,7 +302,7 @@ const handleError = (error: unknown) => {
     errorMessage = String(error.message);
   }
   
-  toast({
+  useToast({
     title: "Error",
     description: errorMessage,
     status: "error",
