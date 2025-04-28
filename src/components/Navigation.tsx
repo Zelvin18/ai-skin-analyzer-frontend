@@ -9,7 +9,7 @@ import {
   useBreakpointValue,
 } from '@chakra-ui/react';
 
-const Navigation = () => {
+const Navigation: React.FC = () => {
   const navigate = useNavigate();
   const isDesktop = useBreakpointValue({ base: false, lg: true });
 

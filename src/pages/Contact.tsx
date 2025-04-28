@@ -25,7 +25,7 @@ import {
 import { FaArrowRight, FaEnvelope, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
 import './Contact.css';
 
-const Contact = () => {
+const Contact: React.FC = () => {
   const navigate = useNavigate();
   const isDesktop = useBreakpointValue({ base: false, lg: true });
   const cardBg = useColorModeValue('white', 'gray.800');

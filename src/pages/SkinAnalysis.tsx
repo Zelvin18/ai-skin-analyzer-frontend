@@ -32,12 +32,15 @@ import {
   ListIcon,
   Divider,
   useColorModeValue,
+  SimpleGrid,
+  Badge,
 } from '@chakra-ui/react';
-import { FaCamera, FaUpload, FaCheck, FaLightbulb, FaExclamationTriangle } from 'react-icons/fa';
+import { FaCamera, FaUpload, FaCheck, FaLightbulb, FaExclamationTriangle, FaShoppingCart, FaArrowLeft } from 'react-icons/fa';
 import axios from 'axios';
 import './SkinAnalysis.css';
+import { SkinAnalysisResult } from '../types';
 
-const SkinAnalysis = () => {
+const SkinAnalysis: React.FC = () => {
   const navigate = useNavigate();
   const isDesktop = useBreakpointValue({ base: false, lg: true });
   const [file, setFile] = useState<File | null>(null);
@@ -253,7 +256,7 @@ const SkinAnalysis = () => {
     if (!file) {
       toast({
         title: 'No image selected',
-        description: 'Please select an image or take a photo first',
+        description: 'Please select an image first',
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -265,77 +268,55 @@ const SkinAnalysis = () => {
     setError(null);
     
     try {
-      // First, upload the image to our backend
+      // Create FormData
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('file', file);
       
-      // Get the auth token
-      const token = localStorage.getItem('access_token');
+      // Log the request details
+      console.log('Sending request to AI model with file:', file.name, file.type, file.size);
       
-      // Upload the image
-      const uploadResponse = await axios.post(
-        'http://127.0.0.1:8000/api/images/',
+      // Send request to AI model
+      const response = await axios.post<SkinAnalysisResult>(
+        'http://localhost:5000/predict',
         formData,
         {
           headers: {
             'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${token}`
           },
+          timeout: 60000, // 60 second timeout
         }
       );
       
-      console.log('Image uploaded successfully:', uploadResponse.data);
+      console.log('AI Model Response:', response.data);
       
-      // Then analyze the uploaded image
-      const imageId = uploadResponse.data.id;
-      const analyzeResponse = await axios.post(
-        `http://127.0.0.1:8000/api/images/${imageId}/analyze/`,
-        {},
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          timeout: 120000 // 120 seconds timeout
-        }
-      );
-      
-      console.log('Analysis response:', analyzeResponse.data);
-      
-      // Navigate to results page with the data
+      // Navigate to results page with the analysis result
       navigate('/results', { 
         state: { 
-          result: analyzeResponse.data,
+          result: response.data,
           image: preview
-        } 
+        }
       });
       
     } catch (error) {
       console.error('Error analyzing image:', error);
       
-      // Handle specific error cases
-      let errorMessage = 'Failed to analyze image. Please try again.';
-      
+      let errorMessage = 'An unknown error occurred';
       if (axios.isAxiosError(error)) {
-        if (error.code === 'ECONNABORTED') {
-          errorMessage = 'The analysis is taking longer than expected. Please try again with a smaller image or try again later.';
-        } else if (error.response) {
-          // The request was made and the server responded with a status code
-          console.error('Error response:', error.response.data);
-          errorMessage = error.response.data.error || errorMessage;
+        if (error.response) {
+          errorMessage = `Server error: ${error.response.status} - ${error.response.data?.message || 'Unknown error'}`;
         } else if (error.request) {
-          // The request was made but no response was received
-          console.error('No response received:', error.request);
-          errorMessage = 'No response from server. Please check your internet connection and try again.';
+          errorMessage = 'No response received from AI model. Please check your internet connection.';
         } else {
-          // Something happened in setting up the request that triggered an Error
-          console.error('Error setting up request:', error.message);
-          errorMessage = error.message;
+          errorMessage = `Request error: ${error.message}`;
         }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
       }
       
       setError(errorMessage);
+      
       toast({
-        title: 'Error',
+        title: 'Analysis failed',
         description: errorMessage,
         status: 'error',
         duration: 5000,
@@ -359,10 +340,9 @@ const SkinAnalysis = () => {
             </Text>
             {isDesktop && (
               <HStack spacing={8}>
-                <Text cursor="pointer" onClick={() => navigate('/')}>Home</Text>
-                <Text cursor="pointer">How it Works</Text>
-                <Text cursor="pointer">About</Text>
-                <Text cursor="pointer">Contact</Text>
+                <Text cursor="pointer" onClick={() => navigate('/how-it-works')}>How it Works</Text>
+                <Text cursor="pointer" onClick={() => navigate('/about')}>About</Text>
+                <Text cursor="pointer" onClick={() => navigate('/contact')}>Contact</Text>
               </HStack>
             )}
           </HStack>
@@ -376,227 +356,183 @@ const SkinAnalysis = () => {
             <Box textAlign="center">
               <Heading size="xl" mb={4}>Skin Analysis</Heading>
               <Text fontSize="lg" color="gray.600" maxW="800px" mx="auto">
-                Upload a photo or take a picture of your skin to get an AI-powered analysis and personalized recommendations.
+                Upload a photo or take a picture of your skin for AI-powered analysis
               </Text>
             </Box>
-
-            <Box maxW="1000px" mx="auto" width="100%">
-              <Tabs variant="enclosed" colorScheme="red" isFitted>
-                <TabList mb="1em">
-                  <Tab>
-                    <Icon as={FaUpload} mr={2} />
-                    Upload Photo
-                  </Tab>
-                  <Tab>
-                    <Icon as={FaCamera} mr={2} />
-                    Take Photo
-                  </Tab>
-                </TabList>
-                
-                <TabPanels>
-                  {/* Upload Tab */}
-                  <TabPanel>
-                    <Card 
-                      borderRadius="xl" 
-                      overflow="hidden" 
-                      boxShadow="lg"
-                      bg={cardBg}
-                      borderColor={borderColor}
+            
+            <Button 
+              leftIcon={<Icon as={FaArrowLeft} />} 
+              variant="outline" 
+              colorScheme="red" 
+              alignSelf="flex-start"
+              onClick={() => navigate('/')}
+            >
+              Back to Home
+            </Button>
+            
+            <Card 
+              borderRadius="xl" 
+              overflow="hidden" 
+              boxShadow="lg"
+              bg={cardBg}
+              borderColor={borderColor}
+            >
+              <CardHeader bg="red.50">
+                <Heading size="md">Upload or Take Photo</Heading>
+              </CardHeader>
+              
+              <CardBody>
+                <VStack spacing={6}>
+                  {cameraActive ? (
+                    <Box position="relative" width="100%" maxW="500px" mx="auto">
+                      <video
+                        ref={videoRef}
+                        style={{
+                          width: '100%',
+                          borderRadius: '0.5rem',
+                          transform: 'scaleX(-1)', // Mirror the video
+                        }}
+                      />
+                      <Button
+                        position="absolute"
+                        bottom="1rem"
+                        left="50%"
+                        transform="translateX(-50%)"
+                        colorScheme="red"
+                        onClick={capturePhoto}
+                      >
+                        Capture Photo
+                      </Button>
+                    </Box>
+                  ) : (
+                    <Box
+                      className="camera-preview"
+                      position="relative"
+                      width="100%"
+                      maxW="500px"
+                      mx="auto"
                     >
-                      <CardBody>
-                        <VStack spacing={6}>
-                          <Box 
-                            border="2px dashed" 
-                            borderColor="gray.300" 
-                            borderRadius="md" 
-                            p={8} 
-                            width="100%" 
-                            textAlign="center"
-                            cursor="pointer"
-                            _hover={{ borderColor: 'red.500' }}
-                            onClick={() => document.getElementById('file-upload')?.click()}
-                          >
-                            <Input 
-                              id="file-upload" 
-                              type="file" 
-                              accept="image/*" 
-                              onChange={handleFileChange} 
-                              display="none" 
-                            />
-                            <VStack spacing={4}>
-                              <Icon as={FaUpload} w={10} h={10} color="gray.400" />
-                              <Text fontSize="lg">Click to upload or drag and drop</Text>
-                              <Text fontSize="sm" color="gray.500">PNG, JPG, JPEG up to 10MB</Text>
-                            </VStack>
-                          </Box>
-                          
-                          {preview && (
-                            <Box width="100%" maxW="400px" mx="auto">
-                              <Image 
-                                src={preview} 
-                                alt="Preview" 
-                                borderRadius="md" 
-                                width="100%" 
-                                objectFit="cover"
-                              />
-                            </Box>
-                          )}
-                        </VStack>
-                      </CardBody>
-                    </Card>
-                  </TabPanel>
+                      {preview ? (
+                        <Image
+                          src={preview}
+                          alt="Preview"
+                          width="100%"
+                          height="100%"
+                          objectFit="cover"
+                          borderRadius="lg"
+                        />
+                      ) : (
+                        <Box
+                          width="100%"
+                          height="100%"
+                          bg="gray.100"
+                          borderRadius="lg"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                        >
+                          <VStack spacing={4}>
+                            <Icon as={FaCamera} w={12} h={12} color="gray.400" />
+                            <Text color="gray.500">
+                              No image selected
+                            </Text>
+                          </VStack>
+                        </Box>
+                      )}
+                    </Box>
+                  )}
                   
-                  {/* Camera Tab */}
-                  <TabPanel>
-                    <Card 
-                      borderRadius="xl" 
-                      overflow="hidden" 
-                      boxShadow="lg"
-                      bg={cardBg}
-                      borderColor={borderColor}
+                  <HStack spacing={4} width="100%" justify="center">
+                    <Button
+                      leftIcon={<Icon as={FaUpload} />}
+                      onClick={() => document.getElementById('file-upload')?.click()}
+                      isDisabled={cameraActive}
                     >
-                      <CardBody>
-                        <VStack spacing={6}>
-                          {!cameraActive ? (
-                            <Button 
-                              colorScheme="red" 
-                              size="lg" 
-                              leftIcon={<Icon as={FaCamera} />}
-                              onClick={startCamera}
-                              width="100%"
-                              maxW="300px"
-                            >
-                              Start Camera
-                            </Button>
-                          ) : (
-                            <VStack spacing={4} width="100%">
-                              <Box 
-                                width="100%" 
-                                maxW="400px" 
-                                mx="auto" 
-                                borderRadius="md" 
-                                overflow="hidden"
-                                boxShadow="md"
-                                position="relative"
-                                height="300px"
-                                bg="black"
-                              >
-                                {cameraActive && (
-                                  <video 
-                                    ref={videoRef} 
-                                    style={{ 
-                                      width: '100%', 
-                                      height: '100%',
-                                      objectFit: 'cover',
-                                      transform: 'scaleX(-1)' // Mirror the video for selfie view
-                                    }}
-                                    autoPlay
-                                    muted
-                                    playsInline
-                                  />
-                                )}
-                              </Box>
-                              
-                              <HStack spacing={4}>
-                                <Button 
-                                  colorScheme="red" 
-                                  onClick={capturePhoto}
-                                  leftIcon={<Icon as={FaCamera} />}
-                                >
-                                  Take Photo
-                                </Button>
-                                <Button 
-                                  variant="outline" 
-                                  onClick={stopCamera}
-                                >
-                                  Cancel
-                                </Button>
-                              </HStack>
-                            </VStack>
-                          )}
-                          
-                          {preview && !cameraActive && (
-                            <Box width="100%" maxW="400px" mx="auto">
-                              <Image 
-                                src={preview} 
-                                alt="Preview" 
-                                borderRadius="md" 
-                                width="100%" 
-                                objectFit="cover"
-                              />
-                            </Box>
-                          )}
-                        </VStack>
-                      </CardBody>
-                    </Card>
-                  </TabPanel>
-                </TabPanels>
-              </Tabs>
-              
-              {/* Guidelines Card */}
-              <Card 
-                mt={8} 
-                borderRadius="xl" 
-                overflow="hidden" 
-                boxShadow="lg"
-                bg={cardBg}
-                borderColor={borderColor}
-              >
-                <CardHeader bg="red.50">
-                  <Heading size="md">Photo Guidelines</Heading>
-                </CardHeader>
-                <CardBody>
-                  <VStack align="start" spacing={4}>
-                    <List spacing={3} width="100%">
-                      <ListItem>
-                        <ListIcon as={FaCheck} color="green.500" />
-                        <Text as="span" fontWeight="medium">Good lighting:</Text> Take the photo in a well-lit area, preferably with natural light
-                      </ListItem>
-                      <ListItem>
-                        <ListIcon as={FaCheck} color="green.500" />
-                        <Text as="span" fontWeight="medium">Close-up:</Text> Get a clear, close-up shot of the area you want to analyze
-                      </ListItem>
-                      <ListItem>
-                        <ListIcon as={FaCheck} color="green.500" />
-                        <Text as="span" fontWeight="medium">Focus:</Text> Ensure the image is in focus and not blurry
-                      </ListItem>
-                      <ListItem>
-                        <ListIcon as={FaCheck} color="green.500" />
-                        <Text as="span" fontWeight="medium">Clean skin:</Text> Make sure your skin is clean and free of makeup or products
-                      </ListItem>
-                    </List>
-                    
-                    <Alert status="info" borderRadius="md">
+                      Upload Photo
+                    </Button>
+                    <Button
+                      leftIcon={<Icon as={FaCamera} />}
+                      onClick={cameraActive ? stopCamera : startCamera}
+                      colorScheme={cameraActive ? 'red' : 'blue'}
+                    >
+                      {cameraActive ? 'Stop Camera' : 'Take Photo'}
+                    </Button>
+                  </HStack>
+                  
+                  <input
+                    id="file-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    style={{ display: 'none' }}
+                  />
+                  
+                  {error && (
+                    <Alert status="error" borderRadius="md">
                       <AlertIcon />
-                      <Text>For best results, take photos of specific areas of concern rather than your entire face.</Text>
+                      {error}
                     </Alert>
-                  </VStack>
-                </CardBody>
-              </Card>
+                  )}
+                  
+                  {isLoading && (
+                    <Center py={4}>
+                      <VStack>
+                        <Spinner size="xl" color="red.500" />
+                        <Text mt={2}>Analyzing your image...</Text>
+                      </VStack>
+                    </Center>
+                  )}
+                </VStack>
+              </CardBody>
               
-              {/* Analyze Button */}
-              <Box mt={8} textAlign="center">
+              <CardFooter>
                 <Button
                   colorScheme="red"
                   size="lg"
+                  width="100%"
                   onClick={analyzeImage}
+                  isDisabled={!file || isLoading}
                   isLoading={isLoading}
                   loadingText="Analyzing..."
-                  width="100%"
-                  maxW="300px"
-                  isDisabled={!file}
                 >
-                  Analyze Skin
+                  Analyze Image
                 </Button>
-                
-                {error && (
-                  <Alert status="error" mt={4} borderRadius="md">
-                    <AlertIcon />
-                    {error}
-                  </Alert>
-                )}
-              </Box>
-            </Box>
+              </CardFooter>
+            </Card>
+            
+            {/* Tips Card */}
+            <Card 
+              borderRadius="xl" 
+              overflow="hidden" 
+              boxShadow="lg"
+              bg={cardBg}
+              borderColor={borderColor}
+            >
+              <CardHeader bg="blue.50">
+                <Heading size="md" color="blue.800">Tips for Best Results</Heading>
+              </CardHeader>
+              
+              <CardBody>
+                <List spacing={3}>
+                  <ListItem>
+                    <ListIcon as={FaCheck} color="green.500" />
+                    Ensure good lighting for clear visibility
+                  </ListItem>
+                  <ListItem>
+                    <ListIcon as={FaCheck} color="green.500" />
+                    Keep your face centered in the frame
+                  </ListItem>
+                  <ListItem>
+                    <ListIcon as={FaCheck} color="green.500" />
+                    Remove any makeup or filters
+                  </ListItem>
+                  <ListItem>
+                    <ListIcon as={FaCheck} color="green.500" />
+                    Use a neutral background
+                  </ListItem>
+                </List>
+              </CardBody>
+            </Card>
           </VStack>
         </Container>
       </Box>

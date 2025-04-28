@@ -22,7 +22,7 @@ import { FaCamera, FaUpload, FaChartBar, FaShoppingCart, FaArrowRight } from 're
 import './HowItWorks.css';
 import Navigation from '../components/Navigation';
 
-const HowItWorks = () => {
+const HowItWorks: React.FC = () => {
   const navigate = useNavigate();
   const isDesktop = useBreakpointValue({ base: false, lg: true });
   const cardBg = useColorModeValue('white', 'gray.800');

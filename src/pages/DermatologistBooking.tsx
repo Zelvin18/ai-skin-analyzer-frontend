@@ -28,15 +28,27 @@ import {
 import { FaArrowLeft, FaCalendarAlt, FaUserMd } from 'react-icons/fa';
 import './DermatologistBooking.css';
 
-const DermatologistBooking = () => {
+interface FormData {
+  name: string;
+  email: string;
+  phone: string;
+  age: string;
+  skinCondition: string;
+  additionalConditions: string;
+  preferredDate: string;
+  preferredTime: string;
+  notes: string;
+}
+
+const DermatologistBooking: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
   
   // Get data from navigation state
-  const { skinCondition } = location.state || { skinCondition: '' };
+  const { skinCondition } = location.state as { skinCondition: string } || { skinCondition: '' };
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
     phone: '',

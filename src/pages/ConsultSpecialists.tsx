@@ -25,7 +25,15 @@ import {
 } from '@chakra-ui/react';
 import { FaUserMd, FaLeaf, FaFlask, FaHeart, FaBrain, FaStar } from 'react-icons/fa';
 
-const specialistTypes = [
+interface SpecialistType {
+  id: string;
+  name: string;
+  icon: React.ElementType;
+  description: string;
+  color: string;
+}
+
+const specialistTypes: SpecialistType[] = [
   {
     id: 'dermatologist',
     name: 'Dermatologist',
@@ -63,12 +71,19 @@ const specialistTypes = [
   },
 ];
 
-const ConsultSpecialists = () => {
+interface FormData {
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+}
+
+const ConsultSpecialists: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
   const [selectedSpecialist, setSelectedSpecialist] = useState('');
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
     phone: '',
@@ -253,7 +268,7 @@ const ConsultSpecialists = () => {
                 <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8}>
                   <Box>
                     <Image
-                      src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=500&h=500&fit=crop"
+                      src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
                       alt="Featured Specialist"
                       borderRadius="lg"
                       objectFit="cover"
@@ -262,19 +277,27 @@ const ConsultSpecialists = () => {
                     />
                   </Box>
                   <VStack align="start" spacing={4}>
-                    <Heading size="md">Dr. Sarah Johnson</Heading>
-                    <Badge colorScheme="green">Dermatologist</Badge>
+                    <Heading size="lg">Dr. Sarah Johnson</Heading>
                     <Text color="gray.600">
-                      With over 15 years of experience in treating various skin conditions,
-                      Dr. Johnson specializes in both medical and cosmetic dermatology.
-                      She is known for her holistic approach to skin care and her dedication
-                      to helping patients achieve their skin health goals.
+                      Board-certified dermatologist with over 15 years of experience in treating various skin conditions.
                     </Text>
-                    <HStack spacing={4}>
-                      <Badge colorScheme="blue">Acne Treatment</Badge>
-                      <Badge colorScheme="purple">Anti-aging</Badge>
-                      <Badge colorScheme="pink">Skin Rejuvenation</Badge>
-                    </HStack>
+                    <Text>
+                      Specializes in:
+                    </Text>
+                    <SimpleGrid columns={2} spacing={2} width="100%">
+                      <Badge colorScheme="blue" p={2}>Acne Treatment</Badge>
+                      <Badge colorScheme="green" p={2}>Anti-aging</Badge>
+                      <Badge colorScheme="purple" p={2}>Skin Cancer</Badge>
+                      <Badge colorScheme="pink" p={2}>Cosmetic Procedures</Badge>
+                    </SimpleGrid>
+                    <Button
+                      colorScheme="red"
+                      size="lg"
+                      width="100%"
+                      onClick={() => setSelectedSpecialist('dermatologist')}
+                    >
+                      Book with Dr. Johnson
+                    </Button>
                   </VStack>
                 </SimpleGrid>
               </CardBody>

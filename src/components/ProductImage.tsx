@@ -11,7 +11,7 @@ import {
   Alert,
   AlertIcon,
 } from '@chakra-ui/react';
-import { FaUpload, FaImage } from 'react-icons/fa';
+import { FaImage } from 'react-icons/fa';
 
 interface ProductImageProps {
   imageUrl?: string;

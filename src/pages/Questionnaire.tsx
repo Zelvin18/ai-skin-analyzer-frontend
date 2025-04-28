@@ -1,234 +1,195 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
-  Button,
   Container,
+  Heading,
   Text,
   VStack,
-  Checkbox,
+  HStack,
+  Button,
+  SimpleGrid,
+  Icon,
+  Flex,
+  Card,
+  CardBody,
+  CardHeader,
+  useBreakpointValue,
+  useColorModeValue,
+  FormControl,
+  FormLabel,
   Radio,
   RadioGroup,
   Stack,
   Progress,
-  useBreakpointValue,
-  Grid,
-  GridItem,
-  Heading,
+  useToast,
 } from '@chakra-ui/react';
+import { FaArrowRight, FaArrowLeft } from 'react-icons/fa';
+import './Questionnaire.css';
 
-interface QuestionStep {
-  question: string;
+interface Question {
+  id: number;
+  text: string;
   options: string[];
-  type: 'checkbox' | 'radio';
-  isMultiSelect?: boolean;
+  category: 'skinType' | 'skinConcerns' | 'lifestyle' | 'medical';
 }
 
-const questions: QuestionStep[] = [
+const questions: Question[] = [
   {
-    question: 'What are your main skin concerns?',
-    options: [
-      'Acne and breakouts',
-      'Fine lines and wrinkles',
-      'Uneven skin tone',
-      'Dryness and dehydration',
-      'Large pores',
-      'Dark spots',
-    ],
-    type: 'checkbox',
-    isMultiSelect: true,
+    id: 1,
+    text: 'What is your skin type?',
+    options: ['Dry', 'Oily', 'Combination', 'Normal', 'Sensitive'],
+    category: 'skinType'
   },
   {
-    question: "What's your primary skincare goal?",
-    options: [
-      'Clear up acne',
-      'Anti-aging',
-      'Even skin tone',
-      'Hydration',
-      'General skin health',
-    ],
-    type: 'radio',
+    id: 2,
+    text: 'What are your main skin concerns?',
+    options: ['Acne', 'Aging', 'Pigmentation', 'Redness', 'Dullness'],
+    category: 'skinConcerns'
   },
   {
-    question: "What's your age range?",
-    options: ['Under 20', '20-30', '31-40', 'over 40', 'Prefer not to say'],
-    type: 'radio',
+    id: 3,
+    text: 'How often do you spend time outdoors?',
+    options: ['Rarely', 'Sometimes', 'Often', 'Very Often'],
+    category: 'lifestyle'
   },
   {
-    question: "What's your skin type?",
-    options: ['Normal', 'Oily', 'Dry', 'Sensitive', 'Combination', "I'm not sure"],
-    type: 'radio',
-  },
-  {
-    question: 'What type of product would you like as part of your skin care routine?',
-    options: ['Cleanser', 'Serum', 'Moisturizer', 'Sunscreen', 'N/A'],
-    type: 'checkbox',
-    isMultiSelect: true,
-  },
-  {
-    question: 'Are you looking for products with specific ingredients?',
-    options: ['Hyaluronic acid', 'Retinol', 'Vitamin C'],
-    type: 'checkbox',
-    isMultiSelect: true,
-  },
+    id: 4,
+    text: 'Do you have any medical conditions affecting your skin?',
+    options: ['None', 'Eczema', 'Psoriasis', 'Rosacea', 'Other'],
+    category: 'medical'
+  }
 ];
 
-const Questionnaire = () => {
+interface Answers {
+  [key: string]: string;
+}
+
+const Questionnaire: React.FC = () => {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string[]>>({});
-  const isDesktop = useBreakpointValue({ base: false, lg: true });
-
-  const handleAnswer = (answer: string | string[]) => {
-    setAnswers({
-      ...answers,
-      [currentStep]: Array.isArray(answer) ? answer : [answer],
-    });
+  const toast = useToast();
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [answers, setAnswers] = useState<Answers>({});
+  const [progress, setProgress] = useState(0);
+  
+  const cardBg = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  
+  const handleAnswer = (value: string) => {
+    const question = questions[currentQuestion];
+    setAnswers(prev => ({
+      ...prev,
+      [question.category]: value
+    }));
   };
-
+  
   const handleNext = () => {
-    if (currentStep < questions.length - 1) {
-      setCurrentStep(currentStep + 1);
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(prev => prev + 1);
+      setProgress(((currentQuestion + 1) / questions.length) * 100);
     } else {
-      navigate('/analysis');
+      // Submit answers
+      handleSubmit();
     }
   };
-
+  
   const handlePrevious = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+    if (currentQuestion > 0) {
+      setCurrentQuestion(prev => prev - 1);
+      setProgress(((currentQuestion - 1) / questions.length) * 100);
     }
   };
-
-  const progress = ((currentStep + 1) / questions.length) * 100;
-
+  
+  const handleSubmit = () => {
+    // Here you would typically send the answers to your backend
+    console.log('Answers:', answers);
+    
+    toast({
+      title: 'Questionnaire completed',
+      description: 'Thank you for providing your information!',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
+    
+    // Navigate to results or next step
+    navigate('/analysis');
+  };
+  
+  const currentQuestionData = questions[currentQuestion];
+  
   return (
     <Box className="app-container">
-      {/* Header */}
-      <Box py={4} className="nav-header">
-        <Container maxW="container.xl">
-          <Text fontSize="xl" fontWeight="bold">
-            <span style={{ color: '#E53E3E' }}>GET</span>
-            <span style={{ color: '#000000' }}>SKIN</span>
-            <span style={{ color: '#E53E3E' }}>BEAUTY</span>
-          </Text>
-        </Container>
-      </Box>
-
-      <Container maxW="container.xl" className="main-content">
-        <Grid
-          templateColumns={isDesktop ? 'repeat(2, 1fr)' : '1fr'}
-          gap={8}
-          alignItems="start"
-        >
-          {/* Question Section */}
-          <GridItem>
-            <VStack spacing={6} align="stretch">
-              <Box>
-                <Text color="gray.600" mb={2}>
-                  Step {currentStep + 1} of {questions.length}
+      <Container maxW="container.xl" py={8}>
+        <VStack spacing={8} align="stretch">
+          <Box textAlign="center">
+            <Heading size="xl" mb={4}>Skin Analysis Questionnaire</Heading>
+            <Text fontSize="lg" color="gray.600" maxW="800px" mx="auto">
+              Help us understand your skin better by answering a few questions
+            </Text>
+          </Box>
+          
+          <Progress 
+            value={progress} 
+            colorScheme="red" 
+            size="sm" 
+            borderRadius="full"
+          />
+          
+          <Card 
+            borderRadius="xl" 
+            overflow="hidden" 
+            boxShadow="lg"
+            bg={cardBg}
+            borderColor={borderColor}
+          >
+            <CardHeader bg="red.50">
+              <Heading size="md">Question {currentQuestion + 1} of {questions.length}</Heading>
+            </CardHeader>
+            
+            <CardBody>
+              <VStack spacing={6} align="stretch">
+                <Text fontSize="xl" fontWeight="medium">
+                  {currentQuestionData.text}
                 </Text>
-                <Progress value={progress} colorScheme="red" borderRadius="full" />
-              </Box>
-
-              <Heading size="lg" color="red.500">
-                {questions[currentStep].question}
-              </Heading>
-
-              <Box className="card">
-                {questions[currentStep].type === 'checkbox' && (
-                  <VStack align="stretch" spacing={4}>
-                    {questions[currentStep].options.map((option) => (
-                      <Checkbox
-                        key={option}
-                        isChecked={answers[currentStep]?.includes(option)}
-                        onChange={(e) => {
-                          const currentAnswers = answers[currentStep] || [];
-                          if (e.target.checked) {
-                            handleAnswer([...currentAnswers, option]);
-                          } else {
-                            handleAnswer(
-                              currentAnswers.filter((answer) => answer !== option)
-                            );
-                          }
-                        }}
-                        size="lg"
-                      >
+                
+                <RadioGroup
+                  value={answers[currentQuestionData.category] || ''}
+                  onChange={handleAnswer}
+                >
+                  <Stack spacing={4}>
+                    {currentQuestionData.options.map((option) => (
+                      <Radio key={option} value={option}>
                         {option}
-                      </Checkbox>
+                      </Radio>
                     ))}
-                  </VStack>
-                )}
-
-                {questions[currentStep].type === 'radio' && (
-                  <RadioGroup
-                    onChange={(value) => handleAnswer(value)}
-                    value={answers[currentStep]?.[0]}
-                  >
-                    <Stack direction="column" spacing={4}>
-                      {questions[currentStep].options.map((option) => (
-                        <Radio key={option} value={option} size="lg">
-                          {option}
-                        </Radio>
-                      ))}
-                    </Stack>
-                  </RadioGroup>
-                )}
-              </Box>
-
-              <Stack direction={isDesktop ? 'row' : 'column'} spacing={4}>
-                {currentStep > 0 && (
+                  </Stack>
+                </RadioGroup>
+                
+                <HStack justify="space-between" mt={8}>
                   <Button
+                    leftIcon={<Icon as={FaArrowLeft} />}
+                    onClick={handlePrevious}
+                    isDisabled={currentQuestion === 0}
                     variant="outline"
                     colorScheme="red"
-                    size="lg"
-                    onClick={handlePrevious}
                   >
                     Previous
                   </Button>
-                )}
-                <Button
-                  colorScheme="red"
-                  size="lg"
-                  onClick={handleNext}
-                  isDisabled={!answers[currentStep]}
-                  flex={1}
-                >
-                  {currentStep === questions.length - 1 ? 'Finish' : 'Continue'}
-                </Button>
-              </Stack>
-            </VStack>
-          </GridItem>
-
-          {/* Progress Preview - Desktop Only */}
-          {isDesktop && (
-            <GridItem className="desktop-sidebar">
-              <Box className="card">
-                <VStack spacing={6} align="stretch">
-                  <Heading size="md">Your Progress</Heading>
-                  {questions.map((q, index) => (
-                    <Box
-                      key={index}
-                      p={4}
-                      bg={currentStep === index ? 'red.50' : 'gray.50'}
-                      borderRadius="md"
-                      opacity={currentStep >= index ? 1 : 0.5}
-                    >
-                      <Text fontWeight="medium" mb={2}>
-                        {index + 1}. {q.question}
-                      </Text>
-                      {answers[index] && (
-                        <Text color="gray.600" fontSize="sm">
-                          {answers[index].join(', ')}
-                        </Text>
-                      )}
-                    </Box>
-                  ))}
-                </VStack>
-              </Box>
-            </GridItem>
-          )}
-        </Grid>
+                  
+                  <Button
+                    rightIcon={<Icon as={FaArrowRight} />}
+                    onClick={handleNext}
+                    colorScheme="red"
+                    isDisabled={!answers[currentQuestionData.category]}
+                  >
+                    {currentQuestion === questions.length - 1 ? 'Submit' : 'Next'}
+                  </Button>
+                </HStack>
+              </VStack>
+            </CardBody>
+          </Card>
+        </VStack>
       </Container>
     </Box>
   );

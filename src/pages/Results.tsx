@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Box, 
@@ -23,17 +23,20 @@ import {
   useColorModeValue,
   Alert,
   AlertIcon,
+  useToast,
 } from '@chakra-ui/react';
 import { FaShoppingCart, FaArrowLeft, FaCheckCircle, FaExclamationTriangle, FaUserMd } from 'react-icons/fa';
 import './Results.css';
+import { Product, SkinAnalysisResult } from '../types';
 
-const Results = () => {
+const Results: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const isDesktop = useBreakpointValue({ base: false, lg: true });
+  const toast = useToast();
   
   // Get data from navigation state
-  const { result, image } = location.state || { result: null, image: null };
+  const { result, image } = location.state as { result: SkinAnalysisResult; image: string } || { result: null, image: null };
   
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -64,6 +67,11 @@ const Results = () => {
   
   // Get recommended products from the AI model
   const recommendedProducts = result.products || [];
+  
+  const handleProductClick = (product: Product) => {
+    // Navigate to product page or open in new tab
+    window.open(`https://getskinbeauty.com/products/${product.id}`, '_blank');
+  };
   
   return (
     <Box className="app-container">
@@ -229,118 +237,84 @@ const Results = () => {
                     {recommendedProducts.map((product) => (
                       <Card 
                         key={product.id}
-                        borderRadius="xl" 
-                        overflow="hidden" 
-                        boxShadow="lg"
-                        bg={cardBg}
-                        borderColor={borderColor}
+                        borderRadius="lg"
+                        overflow="hidden"
+                        boxShadow="md"
+                        cursor="pointer"
+                        onClick={() => handleProductClick(product)}
                         transition="transform 0.3s"
                         _hover={{ transform: 'translateY(-5px)' }}
                       >
                         <Box 
                           height="200px" 
                           overflow="hidden"
-                          position="relative"
                         >
-                          {product.image ? (
-                            <Image 
-                              src={product.image} 
-                              alt={product.name} 
-                              width="100%" 
-                              height="100%" 
-                              objectFit="cover"
-                              onError={(e) => {
-                                // Fallback to a placeholder image if the image fails to load
-                                const target = e.target as HTMLImageElement;
-                                target.src = `https://via.placeholder.com/300x300?text=${product.name.replace(' ', '+')}`;
-                              }}
-                            />
-                          ) : (
-                            <Box
-                              width="100%"
-                              height="100%"
-                              display="flex"
-                              alignItems="center"
-                              justifyContent="center"
-                              bg="gray.100"
-                            >
-                              <Text color="gray.500">No Image Available</Text>
-                            </Box>
-                          )}
+                          <Image
+                            src={product.image}
+                            alt={product.name}
+                            width="100%"
+                            height="100%"
+                            objectFit="cover"
+                          />
                         </Box>
                         <CardBody>
-                          <VStack align="start" spacing={3}>
-                            <Badge colorScheme="red">{product.category}</Badge>
+                          <VStack align="start" spacing={2}>
+                            <Text fontSize="sm" color="gray.500">
+                              {product.brand}
+                            </Text>
                             <Heading size="md">{product.name}</Heading>
-                            <Text color="gray.500">by {product.brand}</Text>
-                            <Text fontSize="sm">{product.description}</Text>
-                            <Text fontWeight="bold" fontSize="xl">${product.price}</Text>
+                            <Text color="gray.600" noOfLines={2}>
+                              {product.description}
+                            </Text>
+                            <HStack spacing={2}>
+                              <Badge colorScheme="green">
+                                ${product.price}
+                              </Badge>
+                              <Badge colorScheme="blue">
+                                {product.category}
+                              </Badge>
+                            </HStack>
                           </VStack>
                         </CardBody>
-                        <CardFooter>
-                          <Button 
-                            colorScheme="red" 
-                            width="100%" 
-                            leftIcon={<Icon as={FaShoppingCart} />}
-                          >
-                            Add to Cart
-                          </Button>
-                        </CardFooter>
                       </Card>
                     ))}
                   </SimpleGrid>
                 ) : (
-                  <Alert status="info" borderRadius="md">
-                    <AlertIcon />
-                    No specific products are recommended for your skin condition at this time.
-                  </Alert>
+                  <Text textAlign="center" color="gray.500">
+                    No specific products recommended at this time.
+                  </Text>
                 )}
               </CardBody>
             </Card>
             
-            {/* Next Steps */}
+            {/* Next Steps Card */}
             <Card 
               borderRadius="xl" 
               overflow="hidden" 
               boxShadow="lg"
               bg={cardBg}
               borderColor={borderColor}
-              mt={4}
             >
-              <CardHeader bg="red.50">
-                <Heading size="md">Next Steps</Heading>
+              <CardHeader bg="blue.50">
+                <Heading size="md" color="blue.800">Next Steps</Heading>
               </CardHeader>
               <CardBody>
-                <VStack align="start" spacing={4}>
+                <VStack spacing={4} align="stretch">
                   <HStack>
                     <Icon as={FaCheckCircle} color="green.500" />
-                    <Text>Review the recommended products above</Text>
-                  </HStack>
-                  <HStack>
-                    <Icon as={FaCheckCircle} color="green.500" />
-                    <Text>Consider consulting with a dermatologist for professional advice</Text>
-                  </HStack>
-                  <HStack>
-                    <Icon as={FaCheckCircle} color="green.500" />
-                    <Text>Start a skincare routine with the recommended products</Text>
+                    <Text>Follow the recommended skincare routine</Text>
                   </HStack>
                   <HStack>
                     <Icon as={FaExclamationTriangle} color="orange.500" />
-                    <Text>Monitor your skin condition and take follow-up photos in 2-4 weeks</Text>
+                    <Text>Monitor your skin condition regularly</Text>
+                  </HStack>
+                  <HStack>
+                    <Icon as={FaUserMd} color="red.500" />
+                    <Text>Consult a dermatologist if symptoms persist</Text>
                   </HStack>
                 </VStack>
               </CardBody>
             </Card>
-            
-            <Box textAlign="center" mt={4}>
-              <Button
-                colorScheme="red"
-                size="lg"
-                onClick={() => navigate('/analysis')}
-              >
-                Analyze Another Image
-              </Button>
-            </Box>
           </VStack>
         </Container>
       </Box>

@@ -62,21 +62,33 @@ import axios from 'axios';
 import './AdminDashboard.css';
 import ProductImage from '../components/ProductImage';
 import { productAPI } from '../services/api';
+import { User, Product } from '../types';
 
-// Initial empty products array (will be populated from API)
-const initialProducts: any[] = [];
+interface FormData {
+  id?: number;
+  name: string;
+  brand: string;
+  category: string;
+  description: string;
+  price: string;
+  image: string | File;
+  stock: string;
+  suitable_for: string;
+  targets: string;
+  when_to_apply: string;
+}
 
-const AdminDashboard = () => {
+const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const isDesktop = useBreakpointValue({ base: false, lg: true });
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   
-  const [products, setProducts] = useState(initialProducts);
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     brand: 'Aurora Beauty',
     category: '',
@@ -89,7 +101,7 @@ const AdminDashboard = () => {
     when_to_apply: ''
   });
   
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   
   const cardBg = useColorModeValue('white', 'gray.800');
@@ -105,7 +117,7 @@ const AdminDashboard = () => {
     setIsLoading(true);
     try {
       console.log('Fetching products from server...');
-      const response = await axios.get('http://localhost:8000/api/products/', {
+      const response = await axios.get<Product[]>('http://localhost:8000/api/products/', {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
@@ -166,7 +178,7 @@ const AdminDashboard = () => {
   const fetchUsers = async () => {
     setIsLoadingUsers(true);
     try {
-      const response = await axios.get('http://localhost:8000/api/users/', {
+      const response = await axios.get<User[]>('http://localhost:8000/api/users/', {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
@@ -200,96 +212,83 @@ const AdminDashboard = () => {
   };
   
   const handleNumberInputChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue)) {
+      setFormData(prev => ({
+        ...prev,
+        [name]: numValue
+      }));
+    }
   };
   
-  const updateProduct = async (productData: any) => {
-    try {
-      console.log('Updating product:', productData);
-      
-      // Ensure ID is a string
-      const productId = String(productData.id);
-      delete productData.id; // Remove id from the payload
-      
-      const response = await productAPI.updateProduct(productId, productData);
-      console.log('Product updated successfully:', response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Error updating product:', error);
-      if (error.response?.status === 401) {
-        // Token expired or invalid
+  const handleError = (error: unknown) => {
+    console.error('Error:', error);
+    let errorMessage = 'An unexpected error occurred';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (error && typeof error === 'object' && 'message' in error) {
+      errorMessage = String(error.message);
+    }
+    
+    toast({
+      title: "Error",
+      description: errorMessage,
+      status: "error",
+      duration: 5000,
+      isClosable: true,
+    });
+
+    if (error && typeof error === 'object' && 'response' in error) {
+      const response = (error as { response?: { status?: number } }).response;
+      if (response?.status === 401) {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         navigate('/admin/login');
-        throw new Error('Session expired. Please login again.');
-      } else if (error.response?.status === 403) {
-        throw new Error('You do not have permission to update products.');
-      } else {
-        throw new Error(error.response?.data?.error || 'Failed to update product');
       }
     }
   };
   
-  const updateProductImageInBackend = async (productId: string, imageFile: File) => {
+  const updateProduct = async (productId: number, productData: Partial<Product>) => {
     try {
-      console.log('Updating product image in backend for product ID:', productId);
-      const response = await productAPI.updateProductImage(productId, imageFile);
-      console.log('Product image updated successfully:', response.data);
-      return response.data;
+      const response = await productAPI.updateProduct(productId, productData);
+      setProducts(prev => prev.map(p => p.id === productId ? response.data : p));
+      toast({
+        title: 'Product updated',
+        description: 'The product has been updated successfully',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
     } catch (error) {
-      console.error('Error updating product image:', error);
-      throw error;
+      handleError(error);
+    }
+  };
+  
+  const updateProductImageInBackend = async (productId: number, imageFile: File) => {
+    try {
+      const response = await productAPI.updateProductImage(productId, imageFile);
+      setProducts(prev => prev.map(p => p.id === productId ? response.data : p));
+      toast({
+        title: 'Product image updated',
+        description: 'The product image has been updated successfully',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      handleError(error);
     }
   };
   
   const handleImageChange = async (file: File) => {
-    try {
-      // Check file size (limit to 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "Image too large",
-          description: "Please select an image under 5MB",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-        return;
-      }
-      
-      // If we're editing an existing product, update the image immediately
-      if (selectedProduct?.id) {
-        try {
-          await updateProductImageInBackend(selectedProduct.id, file);
-          toast({
-            title: "Image updated successfully",
-            status: "success",
-            duration: 3000,
-            isClosable: true,
-          });
-        } catch (error) {
-          console.error('Error updating product image:', error);
-          toast({
-            title: "Failed to update product image",
-            description: error instanceof Error ? error.message : "Please try again",
-            status: "error",
-            duration: 3000,
-            isClosable: true,
-          });
-        }
-      }
-      
-      // Update the form data with the new image
-      setFormData(prev => ({ ...prev, image: URL.createObjectURL(file) }));
-    } catch (error) {
-      console.error('Error handling image change:', error);
-      toast({
-        title: "Error handling image",
-        description: error instanceof Error ? error.message : "Please try again",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
+    if (formData.id) {
+      await updateProductImageInBackend(formData.id, file);
     }
+    setFormData(prev => ({
+      ...prev,
+      image: file
+    }));
   };
   
   const resetForm = () => {
@@ -303,9 +302,8 @@ const AdminDashboard = () => {
       stock: '',
       suitable_for: '',
       targets: '',
-      when_to_apply: ''
+      when_to_apply: '',
     });
-    setSelectedProduct(null);
   };
   
   const openAddProductModal = () => {
@@ -313,246 +311,121 @@ const AdminDashboard = () => {
     onOpen();
   };
   
-  const openEditProductModal = (product: any) => {
+  const openEditProductModal = (product: Product) => {
     setSelectedProduct(product);
     setFormData({
-      name: product.name || '',
-      brand: product.brand || 'Aurora Beauty',
-      category: product.category || '',
-      description: product.description || '',
-      price: product.price?.toString() || '',
-      image: product.image || '',
-      stock: product.stock?.toString() || '',
-      suitable_for: product.suitable_for || '',
-      targets: product.targets || '',
-      when_to_apply: product.when_to_apply || ''
+      id: product.id,
+      name: product.name,
+      brand: product.brand,
+      category: product.category,
+      description: product.description,
+      price: product.price.toString(),
+      image: product.image,
+      stock: product.stock.toString(),
+      suitable_for: product.suitable_for,
+      targets: product.targets,
+      when_to_apply: product.when_to_apply,
     });
     onOpen();
   };
   
-  const addProduct = async (productData: any) => {
+  const addProduct = async (productData: Partial<Product>) => {
     try {
-      console.log('Adding new product:', productData);
-      
-      // Ensure ID is a string
-      const productDataCopy = { ...productData };
-      productDataCopy.id = String(productDataCopy.id);
-      
-      const response = await fetch('http://localhost:8000/api/products/add/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(productDataCopy),
+      const response = await productAPI.addProduct(productData);
+      setProducts(prev => [...prev, response.data]);
+      toast({
+        title: 'Product added',
+        description: 'The product has been added successfully',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Failed to add product:', errorData);
-        throw new Error(errorData.error || 'Failed to add product');
-      }
-      
-      const data = await response.json();
-      console.log('Product added successfully:', data);
-      return data.product;
     } catch (error) {
-      console.error('Error adding product:', error);
-      throw error;
+      handleError(error);
     }
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     
     try {
-      // Validate form data
-      if (!formData.name || !formData.brand || !formData.category || !formData.description || !formData.price || !formData.stock) {
-        toast({
-          title: "Missing required fields",
-          description: "Please fill in all required fields",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-        setIsSubmitting(false);
-        return;
-      }
-      
-      // Convert price and stock to numbers
       const productData = {
-        ...formData,
+        name: formData.name,
+        brand: formData.brand,
+        category: formData.category,
+        description: formData.description,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock),
+        suitable_for: formData.suitable_for,
+        targets: formData.targets,
+        when_to_apply: formData.when_to_apply,
       };
-      
-      let updatedProduct;
-      
-      if (selectedProduct) {
-        // Update existing product
-        productData.id = selectedProduct.id;
-        updatedProduct = await updateProduct(productData);
-        
-        // Update image if it has changed and is a File object
-        if (formData.image && formData.image instanceof File) {
-          try {
-            await updateProductImageInBackend(updatedProduct.id, formData.image);
-            toast({
-              title: "Product updated successfully",
-              status: "success",
-              duration: 3000,
-              isClosable: true,
-            });
-          } catch (error) {
-            console.error('Error updating product image:', error);
-            toast({
-              title: "Product saved but image update failed",
-              description: error instanceof Error ? error.message : "Please try updating the image again",
-              status: "warning",
-              duration: 5000,
-              isClosable: true,
-            });
-          }
-        } else {
-          toast({
-            title: "Product updated successfully",
-            status: "success",
-            duration: 3000,
-            isClosable: true,
-          });
-        }
+
+      if (formData.id) {
+        await updateProduct(formData.id, productData);
       } else {
-        // Add new product
-        updatedProduct = await addProduct(productData);
-        
-        // Update image for new product if it's a File object
-        if (formData.image && formData.image instanceof File) {
-          try {
-            await updateProductImageInBackend(updatedProduct.id, formData.image);
-            toast({
-              title: "Product added successfully",
-              status: "success",
-              duration: 3000,
-              isClosable: true,
-            });
-          } catch (error) {
-            console.error('Error updating product image:', error);
-            toast({
-              title: "Product saved but image update failed",
-              description: error instanceof Error ? error.message : "Please try updating the image again",
-              status: "warning",
-              duration: 5000,
-              isClosable: true,
-            });
-          }
-        } else {
-          toast({
-            title: "Product added successfully",
-            status: "success",
-            duration: 3000,
-            isClosable: true,
-          });
-        }
+        await addProduct(productData);
       }
-      
-      // Refresh products list
-      fetchProducts();
-      
-      // Close modal and reset form
+
       onClose();
       resetForm();
     } catch (error) {
-      console.error('Error saving product:', error);
-      toast({
-        title: "Error saving product",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsSubmitting(false);
+      handleError(error);
     }
   };
   
   const handleDeleteProduct = (id: number) => {
-    // Simulate API call (in a real app, this would be an actual API call)
-    const updatedProducts = products.filter(p => p.id !== id);
-    setProducts(updatedProducts);
-    
-    toast({
-      title: 'Product deleted',
-      description: 'Product has been deleted successfully',
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
-    });
-  };
-
-  const handleDeleteUser = async (userId: number) => {
-    try {
-      await axios.delete(`http://localhost:8000/api/users/${userId}/`, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      setUsers(users.filter(user => user.id !== userId));
-      toast({
-        title: 'User deleted',
-        description: 'User has been deleted successfully',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-    } catch (error: any) {
-      console.error('Error deleting user:', error);
-      toast({
-        title: 'Error deleting user',
-        description: error.message || 'Failed to delete user',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+    if (window.confirm('Are you sure you want to delete this product?')) {
+      try {
+        productAPI.deleteProduct(id);
+        setProducts(prev => prev.filter(p => p.id !== id));
+        toast({
+          title: 'Product deleted',
+          description: 'The product has been deleted successfully',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      } catch (error) {
+        handleError(error);
+      }
     }
   };
-
+  
+  const handleDeleteUser = async (userId: number) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        await axios.delete(`http://localhost:8000/api/users/${userId}/`);
+        setUsers(prev => prev.filter(u => u.id !== userId));
+        toast({
+          title: 'User deleted',
+          description: 'The user has been deleted successfully',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      } catch (error) {
+        handleError(error);
+      }
+    }
+  };
+  
   const handleToggleUserStatus = async (userId: number, isActive: boolean) => {
     try {
-      await axios.patch(`http://localhost:8000/api/users/${userId}/`, {
-        is_active: !isActive
-      }, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      setUsers(users.map(user => 
-        user.id === userId ? { ...user, is_active: !isActive } : user
-      ));
-      
+      await axios.patch(`http://localhost:8000/api/users/${userId}/`, { is_active: !isActive });
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: !isActive } : u));
       toast({
-        title: isActive ? 'User blocked' : 'User unblocked',
-        description: `User has been ${isActive ? 'blocked' : 'unblocked'} successfully`,
+        title: `User ${isActive ? 'deactivated' : 'activated'}`,
+        description: `The user has been ${isActive ? 'deactivated' : 'activated'} successfully`,
         status: 'success',
         duration: 3000,
         isClosable: true,
       });
-    } catch (error: any) {
-      console.error('Error updating user status:', error);
-      toast({
-        title: 'Error updating user status',
-        description: error.message || 'Failed to update user status',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+    } catch (error) {
+      handleError(error);
     }
   };
-
+  
   return (
     <Box className="app-container">
       {/* Header */}
@@ -641,7 +514,7 @@ const AdminDashboard = () => {
                               _hover={{ boxShadow: 'md', transform: 'translateY(-2px)' }}
                             >
                               <Box position="relative" height="250px" overflow="hidden" display="flex" justifyContent="center" alignItems="center" bg="gray.50">
-                                {product.image ? (
+                                {typeof product.image === 'string' ? (
                                   <ProductImage
                                     imageUrl={product.image}
                                     size="md"
@@ -837,126 +710,124 @@ const AdminDashboard = () => {
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <VStack spacing={4}>
-              <FormControl isRequired>
-                <FormLabel>Product Name</FormLabel>
-                <Input 
-                  name="name" 
-                  value={formData.name} 
-                  onChange={handleInputChange} 
-                  placeholder="Enter product name" 
-                />
-              </FormControl>
-              
-              <FormControl isRequired>
-                <FormLabel>Brand</FormLabel>
-                <Input 
-                  name="brand" 
-                  value={formData.brand} 
-                  onChange={handleInputChange} 
-                  placeholder="Enter brand name" 
-                />
-              </FormControl>
-              
-              <FormControl isRequired>
-                <FormLabel>Category</FormLabel>
-                <Input 
-                  name="category" 
-                  value={formData.category} 
-                  onChange={handleInputChange} 
-                  placeholder="Enter product category" 
-                />
-              </FormControl>
-              
-              <FormControl isRequired>
-                <FormLabel>Description</FormLabel>
-                <Textarea 
-                  name="description" 
-                  value={formData.description} 
-                  onChange={handleInputChange} 
-                  placeholder="Enter product description" 
-                />
-              </FormControl>
-              
-              <FormControl isRequired>
-                <FormLabel>Price ($)</FormLabel>
-                <NumberInput 
-                  value={formData.price} 
-                  onChange={(value) => handleNumberInputChange('price', value)}
-                  min={0}
-                  precision={2}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              </FormControl>
-              
-              <FormControl isRequired>
-                <FormLabel>Stock</FormLabel>
-                <NumberInput 
-                  value={formData.stock} 
-                  onChange={(value) => handleNumberInputChange('stock', value)}
-                  min={0}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-              </FormControl>
-              
-              <FormControl>
-                <FormLabel>Product Image</FormLabel>
-                <ProductImage
-                  imageUrl={formData.image}
-                  onImageChange={handleImageChange}
-                  isEditable={true}
-                  size="lg"
-                />
-              </FormControl>
-              
-              <FormControl>
-                <FormLabel>Suitable For</FormLabel>
-                <Textarea 
-                  name="suitable_for" 
-                  value={formData.suitable_for} 
-                  onChange={handleInputChange} 
-                  placeholder="Enter skin types this product is suitable for" 
-                />
-              </FormControl>
-              
-              <FormControl>
-                <FormLabel>Targets</FormLabel>
-                <Textarea 
-                  name="targets" 
-                  value={formData.targets} 
-                  onChange={handleInputChange} 
-                  placeholder="Enter skin concerns this product targets" 
-                />
-              </FormControl>
-              
-              <FormControl>
-                <FormLabel>When to Apply</FormLabel>
-                <Input 
-                  name="when_to_apply" 
-                  value={formData.when_to_apply} 
-                  onChange={handleInputChange} 
-                  placeholder="e.g., AM, PM, AM/PM" 
-                />
-              </FormControl>
-            </VStack>
+            <form onSubmit={handleSubmit}>
+              <VStack spacing={4}>
+                <FormControl isRequired>
+                  <FormLabel>Name</FormLabel>
+                  <Input
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                  />
+                </FormControl>
+                
+                <FormControl isRequired>
+                  <FormLabel>Brand</FormLabel>
+                  <Input
+                    name="brand"
+                    value={formData.brand}
+                    onChange={handleInputChange}
+                  />
+                </FormControl>
+                
+                <FormControl isRequired>
+                  <FormLabel>Category</FormLabel>
+                  <Input
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                  />
+                </FormControl>
+                
+                <FormControl isRequired>
+                  <FormLabel>Description</FormLabel>
+                  <Textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                  />
+                </FormControl>
+                
+                <FormControl isRequired>
+                  <FormLabel>Price</FormLabel>
+                  <NumberInput
+                    min={0}
+                    value={formData.price}
+                    onChange={(value) => handleNumberInputChange('price', value)}
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                </FormControl>
+                
+                <FormControl isRequired>
+                  <FormLabel>Stock</FormLabel>
+                  <NumberInput
+                    min={0}
+                    value={formData.stock}
+                    onChange={(value) => handleNumberInputChange('stock', value)}
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                </FormControl>
+                
+                <FormControl isRequired>
+                  <FormLabel>Suitable For</FormLabel>
+                  <Input
+                    name="suitable_for"
+                    value={formData.suitable_for}
+                    onChange={handleInputChange}
+                  />
+                </FormControl>
+                
+                <FormControl isRequired>
+                  <FormLabel>Targets</FormLabel>
+                  <Input
+                    name="targets"
+                    value={formData.targets}
+                    onChange={handleInputChange}
+                  />
+                </FormControl>
+                
+                <FormControl isRequired>
+                  <FormLabel>When to Apply</FormLabel>
+                  <Input
+                    name="when_to_apply"
+                    value={formData.when_to_apply}
+                    onChange={handleInputChange}
+                  />
+                </FormControl>
+                
+                <FormControl>
+                  <FormLabel>Product Image</FormLabel>
+                  <ProductImage
+                    imageUrl={typeof formData.image === 'string' ? formData.image : undefined}
+                    onImageChange={handleImageChange}
+                    isEditable={true}
+                    size="md"
+                  />
+                </FormControl>
+              </VStack>
+            </form>
           </ModalBody>
           
           <ModalFooter>
             <Button variant="ghost" mr={3} onClick={onClose}>
               Cancel
             </Button>
-            <Button colorScheme="red" onClick={handleSubmit} isLoading={isSubmitting}>
-              {selectedProduct ? 'Update Product' : 'Add Product'}
+            <Button
+              colorScheme="red"
+              onClick={handleSubmit}
+              isLoading={isSubmitting}
+            >
+              {selectedProduct ? 'Update' : 'Add'} Product
             </Button>
           </ModalFooter>
         </ModalContent>

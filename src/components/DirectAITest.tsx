@@ -19,11 +19,12 @@ import {
   CardHeader,
   CardFooter,
 } from '@chakra-ui/react';
+import { SkinAnalysisResult } from '../types';
 
 const DirectAITest = () => {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<SkinAnalysisResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
@@ -70,7 +71,7 @@ const DirectAITest = () => {
       console.log('Sending request to AI model with file:', file.name, file.type, file.size);
       
       // Send request directly to AI model
-      const response = await axios.post(
+      const response = await axios.post<SkinAnalysisResult>(
         'http://localhost:5000/predict',
         formData,
         {

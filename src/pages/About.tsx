@@ -22,7 +22,7 @@ import {
 import { FaArrowRight, FaHeart, FaLightbulb, FaUsers } from 'react-icons/fa';
 import './About.css';
 
-const About = () => {
+const About: React.FC = () => {
   const navigate = useNavigate();
   const isDesktop = useBreakpointValue({ base: false, lg: true });
   const cardBg = useColorModeValue('white', 'gray.800');

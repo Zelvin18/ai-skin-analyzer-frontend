@@ -24,7 +24,7 @@ import ConsentPopup from '../components/ConsentPopup';
 import Navigation from '../components/Navigation';
 import './Home.css';
 
-const Home = () => {
+const Home: React.FC = () => {
   const navigate = useNavigate();
   const isDesktop = useBreakpointValue({ base: false, lg: true });
   const [isConsentOpen, setIsConsentOpen] = useState(false);
@@ -259,15 +259,6 @@ const Home = () => {
                 </CardBody>
               </Card>
             </SimpleGrid>
-
-            <Button
-              colorScheme="red"
-              size="lg"
-              onClick={handleStartAnalysis}
-              mt={4}
-            >
-              Start Your Analysis
-            </Button>
           </VStack>
         </Container>
       </Box>
