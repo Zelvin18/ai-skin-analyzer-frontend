@@ -9,7 +9,9 @@ import {
   TestResult,
   ApiResponse
 } from '../types/index';
-import { useToast } from '@chakra-ui/react';
+import { createStandaloneToast } from '@chakra-ui/react';
+
+const { toast } = createStandaloneToast();
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 const AI_MODEL_URL = import.meta.env.VITE_AI_MODEL_URL || 'http://localhost:5000/predict';
@@ -302,7 +304,7 @@ const handleError = (error: unknown) => {
     errorMessage = String(error.message);
   }
   
-  useToast({
+  toast({
     title: "Error",
     description: errorMessage,
     status: "error",
