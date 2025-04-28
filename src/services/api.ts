@@ -16,6 +16,13 @@ const { toast } = createStandaloneToast();
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 const AI_MODEL_URL = import.meta.env.VITE_AI_MODEL_URL || 'http://localhost:5000/predict';
 
+// Debug logging
+console.log('API URLs:', {
+  API_BASE_URL,
+  AI_MODEL_URL,
+  env: import.meta.env
+});
+
 // Create an axios instance with default config
 const api = axios.create({
   baseURL: API_BASE_URL,
