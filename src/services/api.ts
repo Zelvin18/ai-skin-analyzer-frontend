@@ -1,8 +1,21 @@
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
+import { 
+  User, 
+  Product, 
+  SkinAnalysisResult, 
+  AuthCredentials, 
+  AuthResponse, 
+  ConsultationData, 
+  TestResult,
+  ApiResponse
+} from '../types';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const AI_MODEL_URL = import.meta.env.VITE_AI_MODEL_URL || 'http://localhost:5000/predict';
 
 // Create an axios instance with default config
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -10,7 +23,7 @@ const api = axios.create({
 
 // Create a separate axios instance for the AI model
 const aiModelApi = axios.create({
-  baseURL: 'https://us-central1-aurora-457407.cloudfunctions.net/predict',
+  baseURL: AI_MODEL_URL,
   headers: {
     'Accept': 'application/json',
   },
@@ -47,7 +60,7 @@ api.interceptors.response.use(
           throw new Error('No refresh token available');
         }
 
-        const response = await axios.post('http://localhost:8000/api/token/refresh/', {
+        const response = await axios.post<AuthResponse>(`${API_BASE_URL}/token/refresh/`, {
           refresh: refreshToken
         });
 
@@ -72,19 +85,19 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
-  login: (credentials: { email: string; password: string }) =>
+  login: (credentials: AuthCredentials): Promise<AxiosResponse<AuthResponse>> =>
     api.post('/token/', credentials),
   
-  register: (userData: any) =>
+  register: (userData: Partial<User>): Promise<AxiosResponse<User>> =>
     api.post('/users/', userData),
   
-  refreshToken: (refresh: string) =>
+  refreshToken: (refresh: string): Promise<AxiosResponse<AuthResponse>> =>
     api.post('/token/refresh/', { refresh }),
 };
 
 // Image API
 export const imageAPI = {
-  uploadImage: (imageFile: File) => {
+  uploadImage: (imageFile: File): Promise<AxiosResponse<{ id: number; image_url: string }>> => {
     const formData = new FormData();
     formData.append('image', imageFile);
     return api.post('/analysis/upload/', formData, {
@@ -94,10 +107,10 @@ export const imageAPI = {
     });
   },
   
-  analyzeImage: (imageId: number) => 
+  analyzeImage: (imageId: number): Promise<AxiosResponse<SkinAnalysisResult>> => 
     api.post(`/analysis/${imageId}/analyze/`),
     
-  analyzeWithAIModel: async (imageFile: File) => {
+  analyzeWithAIModel: async (imageFile: File): Promise<SkinAnalysisResult & { image_id?: number; image_url?: string }> => {
     console.log('Analyzing image with cloud AI model:', {
       fileName: imageFile.name,
       fileSize: imageFile.size,
@@ -106,8 +119,8 @@ export const imageAPI = {
 
     // Check if user is logged in
     const token = localStorage.getItem('token');
-    let imageId = null;
-    let imageUrl = null;
+    let imageId: number | null = null;
+    let imageUrl: string | null = null;
 
     // Only try to upload to backend if user is logged in
     if (token) {
@@ -133,8 +146,8 @@ export const imageAPI = {
     
     while (retryCount < maxRetries) {
       try {
-        const response = await axios.post(
-          'https://us-central1-aurora-457407.cloudfunctions.net/predict',
+        const response = await axios.post<SkinAnalysisResult>(
+          AI_MODEL_URL,
           formData,
           {
             headers: {
@@ -167,8 +180,8 @@ export const imageAPI = {
         console.log('Cloud AI model response:', response.data);
         return {
           ...response.data,
-          image_id: imageId,
-          image_url: imageUrl
+          image_id: imageId || undefined,
+          image_url: imageUrl || undefined
         };
       } catch (error) {
         retryCount++;
@@ -180,18 +193,21 @@ export const imageAPI = {
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
       }
     }
+    
+    // This should never be reached due to the while loop, but TypeScript needs it
+    throw new Error('Failed to analyze image after multiple attempts. Please try again later.');
   },
 };
 
 // Product API
 export const productAPI = {
-  getAllProducts: () => 
+  getAllProducts: (): Promise<AxiosResponse<Product[]>> => 
     api.get('/products/'),
   
-  getProductById: (productId: number) => 
+  getProductById: (productId: number): Promise<AxiosResponse<Product>> => 
     api.get(`/products/${productId}/`),
     
-  updateProduct: (productId: number, data: any) => {
+  updateProduct: (productId: number, data: Partial<Product>): Promise<AxiosResponse<Product>> => {
     // Create a copy of the data to avoid modifying the original
     const updateData = { ...data };
     
@@ -207,7 +223,7 @@ export const productAPI = {
     });
   },
     
-  updateProductImage: (productId: number, imageFile: File) => {
+  updateProductImage: (productId: number, imageFile: File): Promise<AxiosResponse<Product>> => {
     const formData = new FormData();
     formData.append('image', imageFile);
     return api.post(`/products/${productId}/update_image/`, formData, {
@@ -220,18 +236,15 @@ export const productAPI = {
 
 // Consultation API
 export const consultationAPI = {
-  createConsultation: (consultationData: { 
-    date: string; 
-    message: string; 
-  }) => 
+  createConsultation: (consultationData: ConsultationData): Promise<AxiosResponse<any>> => 
     api.post('/consultations/create/', consultationData),
   
-  getUserConsultations: () => 
+  getUserConsultations: (): Promise<AxiosResponse<any[]>> => 
     api.get('/consultations/user/'),
 };
 
 // Test function to verify AI model endpoint
-export const testAIModel = async () => {
+export const testAIModel = async (): Promise<TestResult> => {
   try {
     // Create a simple test image (1x1 pixel)
     const canvas = document.createElement('canvas');
@@ -258,7 +271,7 @@ export const testAIModel = async () => {
     formData.append('file', testFile);
     
     // Send test request
-    const response = await aiModelApi.post('', formData, {
+    const response = await aiModelApi.post<TestResult>('', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
