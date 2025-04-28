@@ -9,6 +9,7 @@ import {
   TestResult,
   ApiResponse
 } from '../types/index';
+import { toast } from '@chakra-ui/react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 const AI_MODEL_URL = import.meta.env.VITE_AI_MODEL_URL || 'http://localhost:5000/predict';
@@ -288,6 +289,34 @@ export const testAIModel = async (): Promise<TestResult> => {
   } catch (error) {
     console.error('AI Model Test Error:', error);
     throw error;
+  }
+};
+
+const handleError = (error: unknown) => {
+  console.error('Error:', error);
+  let errorMessage = 'An unexpected error occurred';
+  
+  if (error instanceof Error) {
+    errorMessage = error.message;
+  } else if (error && typeof error === 'object' && 'message' in error) {
+    errorMessage = String(error.message);
+  }
+  
+  toast({
+    title: "Error",
+    description: errorMessage,
+    status: "error",
+    duration: 5000,
+    isClosable: true,
+  });
+
+  if (error && typeof error === 'object' && 'response' in error) {
+    const response = (error as { response?: { status?: number } }).response;
+    if (response?.status === 401) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      window.location.href = '/admin/login';
+    }
   }
 };
 
